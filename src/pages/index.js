@@ -3,7 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import LogoutButton from '../components/LogoutButton';
+import ReactMarkdown from 'react-markdown'; // Impor ReactMarkdown
+import rehypeRaw from 'rehype-raw'; // Impor rehype-raw
 
+// Get base URL from environment variables
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function Chatbot() {
@@ -19,7 +22,6 @@ export default function Chatbot() {
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
-  // Tutup dropdown saat klik di luar
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -28,17 +30,16 @@ export default function Chatbot() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownRef]);
 
-  // Scroll otomatis ke bawah setiap ada pesan baru
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // 📌 Pindahkan fetchChatHistory ke luar useEffect supaya bisa dipanggil ulang
   const fetchChatHistory = async () => {
     setError('');
     setIsLoading(true);
@@ -77,14 +78,12 @@ export default function Chatbot() {
     }
   };
 
-  // 📌 Panggil saat pertama kali render
   useEffect(() => {
     if (localStorage.getItem('isLoggedIn')) {
       fetchChatHistory();
     }
   }, []);
 
-  // 📌 Kirim pesan dan stream balasan
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === '' || isLoading) return;
@@ -104,9 +103,8 @@ export default function Chatbot() {
         return;
       }
 
-      // Tambahkan bubble kosong untuk bot
       const botIndex = messages.length + 1;
-      setMessages(prev => [...prev, { sender: 'bot', text: '' }]);
+      setMessages(prev => [...prev, { sender: 'bot', text: '...' }]); // Tampilkan loading ...
 
       const res = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -130,7 +128,6 @@ export default function Chatbot() {
         if (done) break;
         botReply += decoder.decode(value, { stream: true });
 
-        // Update teks bubble bot terakhir
         setMessages(prev => {
           const updated = [...prev];
           updated[botIndex] = { sender: 'bot', text: botReply };
@@ -138,7 +135,6 @@ export default function Chatbot() {
         });
       }
 
-      // 📌 Setelah selesai streaming, sinkronkan dengan database
       await fetchChatHistory();
 
     } catch (err) {
@@ -193,7 +189,12 @@ export default function Chatbot() {
               ...(msg.sender === 'user' ? chatbotStyles.userMessage : chatbotStyles.botMessage),
             }}
           >
-            {msg.text}
+            {/* Menggunakan ReactMarkdown untuk merender konten bot */}
+            {msg.sender === 'bot' ? (
+              <ReactMarkdown rehypePlugins={[rehypeRaw]}>{msg.text}</ReactMarkdown>
+            ) : (
+              msg.text
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />

@@ -1,180 +1,140 @@
-// components/DeleteAccountButton.jsx
 import React, { useState } from 'react';
 
 const DeleteAccountButton = () => {
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
 
-    // Function to handle account deletion
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
     const handleDeleteAccount = async () => {
-    setIsLoading(true);
-    setError(null);
+        setIsLoading(true);
+        setError(null);
+        setSuccessMessage(null);
 
-    try {
-        const authToken = localStorage.getItem('authToken');
-        console.log("Auth token in storage:", authToken);
+        try {
+            const authToken = localStorage.getItem("authToken");
 
-        if (!authToken) {
-            setError('Authentication token is missing. Please log in again.');
-            setIsLoading(false);
-            setTimeout(() => { window.location.href = '/login'; }, 2000);
-            return;
-        }
-
-        const response = await fetch('https://chatbot-oe7x.onrender.com/deleteaccount', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-            },
-            credentials: 'include' // kalau backend pakai cookie
-        });
-
-        const text = await response.text();
-        console.log("Server response text:", text);
-
-        if (response.ok) {
-            console.log('Account deleted successfully!');
-            localStorage.removeItem('authToken');
-            window.location.href = '/login';
-        } else {
-            if (response.status === 401) {
-                setError('Unauthorized: Your session has expired. Please log in again.');
-                localStorage.removeItem('authToken');
-                setTimeout(() => { window.location.href = '/login'; }, 2000);
-            } else {
-                setError(text || 'Failed to delete account.');
+            if (!authToken) {
+                setError("You must log in before deleting your account.");
+                setIsLoading(false);
+                return;
             }
-        }
-    } catch (err) {
-        setError('Network error: Could not connect to the server.');
-        console.error(err);
-    } finally {
-        setIsLoading(false);
-        setShowModal(false);
-    }
-};
 
+            const response = await fetch(`${API_BASE_URL}/deleteaccount`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to delete account');
+            }
+
+            // ✅ Show success message
+            setSuccessMessage(result.message || "Your account has been successfully deleted.");
+
+            // ✅ Clear token
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("isLoggedIn");
+
+            // ✅ Redirect after short delay
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+
+        } catch (err) {
+            setError(err.message);
+            console.error('Delete account error:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const styles = {
         button: {
             padding: '12px 25px',
-            backgroundColor: '#dc3545',
+            background: 'linear-gradient(45deg, #ff4e50, #d6293e)',
             color: 'white',
             border: 'none',
-            borderRadius: '25px',
+            borderRadius: '30px',
             cursor: 'pointer',
             fontSize: '16px',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 10px rgba(220, 53, 69, 0.3)',
+            fontWeight: '600',
             transition: 'all 0.3s ease',
-            '&:hover': {
-                transform: 'translateY(-2px)',
-                backgroundColor: '#c82333',
-                boxShadow: '0 6px 15px rgba(220, 53, 69, 0.5)',
-            },
-            '&:disabled': {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                boxShadow: 'none',
-                transform: 'none',
-            },
+            boxShadow: '0 4px 15px rgba(255, 78, 80, 0.3)',
         },
         modalOverlay: {
             position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
-            padding: '1rem',
+            zIndex: 1000
         },
-        modalCard: {
-            backgroundColor: '#34495e',
-            borderRadius: '15px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-            padding: '2rem',
-            maxWidth: '400px',
-            width: '100%',
-            textAlign: 'center',
+        modalContent: {
+            backgroundColor: '#2c3e50',
             color: '#ecf0f1',
+            padding: '2rem',
+            borderRadius: '15px',
+            maxWidth: '420px',
+            width: '100%',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            textAlign: 'center',
+            fontFamily: 'Inter, sans-serif'
         },
-        modalHeading: {
-            fontSize: '20px',
-            fontWeight: 'bold',
+        errorText: {
             color: '#ff7675',
-            marginBottom: '1rem',
+            marginTop: '10px',
+            fontWeight: '500'
         },
-        modalText: {
-            color: '#bbb',
-            marginBottom: '1.5rem',
-            lineHeight: '1.6',
-        },
-        modalButtonContainer: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: '1rem',
+        successText: {
+            color: '#2ecc71',
+            marginTop: '10px',
+            fontWeight: '500'
         },
         cancelButton: {
-            flex: 1,
-            padding: '12px 25px',
-            backgroundColor: '#556270',
-            color: '#ecf0f1',
-            border: 'none',
-            borderRadius: '25px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-                transform: 'translateY(-2px)',
-                backgroundColor: '#4a5b6b',
-                boxShadow: '0 6px 15px rgba(0,0,0,0.3)',
-            },
-            '&:disabled': {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                boxShadow: 'none',
-                transform: 'none',
-            },
-        },
-        deleteButton: {
-            flex: 1,
-            padding: '12px 25px',
-            backgroundColor: '#dc3545',
+            padding: '10px 20px',
+            background: 'linear-gradient(45deg, #7f8c8d, #95a5a6)',
             color: 'white',
             border: 'none',
             borderRadius: '25px',
             cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 10px rgba(220, 53, 69, 0.3)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-                transform: 'translateY(-2px)',
-                backgroundColor: '#c82333',
-                boxShadow: '0 6px 15px rgba(220, 53, 69, 0.5)',
-            },
-            '&:disabled': {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                boxShadow: 'none',
-                transform: 'none',
-            },
+            fontWeight: '500',
+            fontSize: '14px',
+            transition: 'all 0.3s ease'
         },
-        errorMessage: {
-            marginTop: '1rem',
-            color: '#ff7675',
-            textAlign: 'center',
-            fontWeight: 'bold',
+        confirmButton: {
+            padding: '10px 20px',
+            background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '25px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            transition: 'all 0.3s ease'
+        },
+        buttonGroup: {
+            display: 'flex',
+            gap: '1rem',
+            marginTop: '1.5rem',
+            justifyContent: 'center'
         }
     };
 
     return (
         <div style={{ padding: '1rem' }}>
+            {/* Delete Account Button */}
             <button
                 onClick={() => setShowModal(true)}
                 style={styles.button}
@@ -183,31 +143,31 @@ const DeleteAccountButton = () => {
                 {isLoading ? 'Deleting...' : 'Delete Account'}
             </button>
 
-            {error && (
-                <p style={styles.errorMessage}>
-                    Error: {error}
-                </p>
-            )}
+            {/* Error Message */}
+            {error && <p style={styles.errorText}>Error: {error}</p>}
 
+            {/* Confirmation Modal */}
             {showModal && (
                 <div style={styles.modalOverlay}>
-                    <div style={styles.modalCard}>
-                        <h2 style={styles.modalHeading}>Confirm Account Deletion</h2>
-                        <p style={styles.modalText}>
-                            Are you sure you want to permanently delete your account? This action cannot be undone.
-                        </p>
-                        <div style={styles.modalButtonContainer}>
+                    <div style={styles.modalContent}>
+                        <h2 style={{ marginBottom: '1rem' }}>⚠ Confirm Deletion</h2>
+                        <p>Are you sure you want to permanently delete your account? This action cannot be undone.</p>
+
+                        {/* ✅ Show success message inside modal */}
+                        {successMessage && <p style={styles.successText}>{successMessage}</p>}
+
+                        <div style={styles.buttonGroup}>
                             <button
                                 onClick={() => setShowModal(false)}
-                                style={styles.cancelButton}
                                 disabled={isLoading}
+                                style={styles.cancelButton}
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDeleteAccount}
-                                style={styles.deleteButton}
-                                disabled={isLoading}
+                                disabled={isLoading || successMessage}
+                                style={styles.confirmButton}
                             >
                                 {isLoading ? 'Deleting...' : 'Delete'}
                             </button>
